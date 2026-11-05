@@ -9,6 +9,13 @@ struct SettingsView: View {
     @State private var confirmReset = false
     @State private var confirmStarter = false
 
+    private var appVersion: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        return "\(version) (\(build))"
+    }
+
     var body: some View {
         @Bindable var store = store
         NavigationStack {
@@ -75,7 +82,7 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    LabeledContent("App", value: "Ferheng 1.0")
+                    LabeledContent("Version", value: appVersion)
                     LabeledContent("Sprache", value: "Kurmancî ↔ Deutsch")
                 } footer: {
                     Text("„Ferheng“ heißt auf Kurdisch „Wörterbuch“.")

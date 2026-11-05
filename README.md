@@ -21,30 +21,62 @@ Native iPhone-App (Swift/SwiftUI, ab iOS 17) zum Lernen von Kurdisch (Kurmancî)
 - **Backup** als Datei, z. B. in iCloud Drive, und Wiederherstellen.
 - Dunkelmodus und Haptik-Feedback. Die App läuft komplett offline.
 
-## Auf das iPhone bringen
+## Auf das iPhone bringen (kostenlos mit SideStore)
 
-Apple erlaubt Apps nur über Xcode, TestFlight/App Store oder Sideloading. Je nachdem, was du hast, gibt es drei Wege:
+SideStore ist eine App für das iPhone, mit der du Apps direkt auf dem Handy installierst und aktualisierst. Den PC brauchst du **nur einmal** für die Einrichtung.
 
-### Weg A: Mit einem Mac (kostenlos, empfohlen)
-1. Installiere **Xcode** aus dem Mac App Store.
-2. Lade dieses Repository herunter und öffne `Ferheng.xcodeproj`.
-3. Verbinde dein iPhone per Kabel. Aktiviere auf dem iPhone unter *Einstellungen → Datenschutz & Sicherheit* den **Entwicklermodus**.
-4. Wähle in Xcode unter *Signing & Capabilities* bei „Team“ deine Apple-ID aus. Ändere bei Bedarf den Bundle Identifier, z. B. auf `com.deinname.ferheng`.
-5. Wähle oben dein iPhone aus und drücke ▶︎.
-6. Auf dem iPhone: *Einstellungen → Allgemein → VPN & Geräteverwaltung* → deinem Entwickler-Zertifikat vertrauen.
+> ⚠️ Die Programme rund um SideStore ändern sich gelegentlich (Namen, Downloads). Falls ein Schritt unten nicht mehr passt, gilt die offizielle Anleitung: **https://docs.sidestore.io**
 
-> Mit einer kostenlosen Apple-ID läuft die App **7 Tage**. Danach einfach erneut in Xcode auf ▶︎ drücken. Deine Daten bleiben dabei erhalten. Mit dem Apple-Developer-Programm (99 €/Jahr) gilt die Installation 1 Jahr lang. Darüber kannst du die App auch per TestFlight verteilen.
+### Voraussetzungen
+- iPhone mit iOS 17 oder neuer
+- Ein PC (Windows, Mac oder Linux) und ein USB-Kabel
+- Eine Apple-ID. Eine zusätzliche, nur dafür angelegte Apple-ID ist empfehlenswert, aber nicht nötig.
+- Dieses GitHub-Repository muss **öffentlich** sein (siehe unten), damit SideStore die Updates herunterladen kann.
 
-### Weg B: Ohne Mac (Windows-PC), per Sideloading
-1. Öffne auf GitHub den Tab **Actions** → **iOS Build** → den neuesten erfolgreichen Durchlauf. Lade unten das Artefakt **Ferheng-ipa** herunter und entpacke es. Darin liegt die Datei `Ferheng.ipa`.
-2. Installiere [Sideloadly](https://sideloadly.io) oder AltStore auf deinem PC.
-3. Verbinde das iPhone, ziehe `Ferheng.ipa` in Sideloadly und melde dich mit deiner Apple-ID an.
-4. Auf dem iPhone den Entwicklermodus aktivieren und dem Zertifikat vertrauen (siehe oben).
+### Einmalige Einrichtung
+1. **iPhone:** Lade im App Store die App **LocalDevVPN** (früher „StosVPN“). SideStore braucht sie, um ohne PC zu installieren und zu erneuern.
+2. **PC (nur Windows):** Installiere **iTunes von der Apple-Webseite** (nicht aus dem Microsoft Store). Darüber erkennt der PC das iPhone.
+3. **PC:** Lade das Installationsprogramm **iloader** herunter. Der Link steht auf docs.sidestore.io unter „Installation“.
+4. Schließe das iPhone per Kabel an, entsperre es und tippe auf **„Vertrauen“**.
+5. Starte iloader, melde dich mit deiner Apple-ID an und wähle **„Install SideStore“**. iloader installiert SideStore und richtet die nötige Kopplungsdatei („Pairing File“) ein.
+6. **iPhone:**
+   - *Einstellungen → Datenschutz & Sicherheit → Entwicklermodus* einschalten. Das iPhone startet danach neu.
+   - *Einstellungen → Allgemein → VPN & Geräteverwaltung* → deiner Apple-ID **vertrauen**.
+7. Öffne **LocalDevVPN** und tippe auf **Verbinden**. Öffne dann **SideStore** und melde dich mit derselben Apple-ID an.
 
-Auch hier gilt bei kostenloser Apple-ID: alle 7 Tage neu signieren. AltStore kann das automatisch erledigen.
+Ab hier brauchst du den PC nicht mehr.
 
-### Weg C: Apple-Developer-Account + TestFlight
-Mit einem kostenpflichtigen Developer-Account kannst du die App über Xcode archivieren und per TestFlight auf dein iPhone laden. Dort hält sie 90 Tage pro Build.
+### Ferheng installieren
+1. Öffne in SideStore den Tab **Quellen (Sources)**, tippe auf **＋** und füge diese Adresse ein:
+   ```
+   https://github.com/alican46/Vokabeln/releases/latest/download/source.json
+   ```
+2. Öffne den Tab **Durchsuchen (Browse)** → **Ferheng** → **Installieren**.
+
+### Updates
+- Wenn es eine neue Version gibt, erscheint sie in SideStore unter **Meine Apps** → **Aktualisieren** tippen. LocalDevVPN muss dabei verbunden sein.
+- Deine Vokabeln und dein Lernfortschritt bleiben bei Updates erhalten. Lösche die App also nicht vorher.
+- Unter *Mehr → Version* in Ferheng siehst du, welche Version installiert ist.
+
+### Alle 7 Tage erneuern (wichtig!)
+Mit einer kostenlosen Apple-ID läuft eine installierte App nur 7 Tage. Öffne deshalb mindestens einmal pro Woche **LocalDevVPN (verbinden)** und dann **SideStore** → **Meine Apps** → **Alle erneuern (Refresh All)**.
+Tipp: Mit der Kurzbefehle-App kannst du dafür eine tägliche Automation anlegen.
+
+Wenn du es doch vergisst, startet die App nicht mehr. Dann einfach in SideStore erneuern. Deine Daten sind weiterhin da.
+
+### Sicherheitsnetz: Backup
+Ab und zu unter *Mehr → Backup erstellen* sichern, z. B. in iCloud Drive. Falls du die App einmal neu installieren musst, kannst du alles wiederherstellen.
+
+## Repository öffentlich machen (einmalig)
+SideStore kann nur von öffentlichen Adressen laden. Auf GitHub: **Settings → General → ganz unten „Danger Zone“ → Change visibility → Make public**.
+Im Code stehen keine Passwörter oder persönlichen Daten, denn deine Vokabeln liegen nur auf deinem iPhone. Nebeneffekt: Bei öffentlichen Repos sind die GitHub-Builds kostenlos und unbegrenzt.
+
+## Wie eine neue Version entsteht (für Entwickler)
+1. Code ändern.
+2. Die Zahl in der Datei `VERSION` erhöhen, z. B. `1.0.0` → `1.1.0`.
+3. Pushen. Der Workflow **Release (SideStore-Update)** baut die App, erstellt das GitHub-Release mit `Ferheng.ipa` und `source.json`, und SideStore zeigt das Update an.
+
+Ohne SideStore geht es auch mit Xcode auf einem Mac (Projekt öffnen, iPhone anschließen, ▶︎) oder mit Sideloadly und der `.ipa` aus dem neuesten Release.
 
 ## Projektstruktur
 

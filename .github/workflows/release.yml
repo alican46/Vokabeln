@@ -1,0 +1,65 @@
+name: Release (SideStore-Update)
+
+# Ein neues Release entsteht, wenn sich die Datei VERSION ändert
+# (oder manuell über "Run workflow").
+on:
+  push:
+    paths:
+      - VERSION
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version lesen
+        id: v
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release v$VERSION gibt es schon – nichts zu tun. Erhöhe die Zahl in VERSION."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: App bauen
+        if: steps.v.outputs.exists == 'false'
+        run: |
+          xcodebuild \
+            -project Ferheng.xcodeproj \
+            -scheme Ferheng \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            MARKETING_VERSION="${{ steps.v.outputs.version }}" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/Ferheng.app Payload/
+          zip -qry Ferheng.ipa Payload
+          cp Ferheng/Assets.xcassets/AppIcon.appiconset/AppIcon.png icon.png
+
+      - name: Release veröffentlichen
+        if: steps.v.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.v.outputs.version }}"
+          export RELEASE_NOTES="$(git log -1 --pretty=%s)"
+          python3 scripts/make_source.py "$VERSION" "${{ github.run_number }}" Ferheng.ipa source.json
+          gh release create "v$VERSION" Ferheng.ipa source.json icon.png \
+            --target "$GITHUB_SHA" \
+            --title "Ferheng $VERSION" \
+            --notes "$RELEASE_NOTES" \
+            --latest
