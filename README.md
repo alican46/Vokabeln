@@ -15,6 +15,7 @@ Native iPhone-App (Swift/SwiftUI, ab iOS 17) zum Lernen von Kurdisch (Kurmancî)
 - **Verb-Trainer**: Pro Verb fragt die App Präsensstamm, Präsens, Vergangenheit, Imperativ und Futur einzeln ab. Du kannst außerdem markieren, ob ein Verb transitiv oder intransitiv ist (wichtig für die Ergativ-Konstruktion).
 - **Nomen**: Geschlecht (m/f) und Plural, wichtig für die Ezafe.
 - **Beispielsätze & Eselsbrücken** zu jedem Wort.
+- **Wörter fotografieren**: Du fotografierst eine Vokabelliste, z. B. aus dem Lernbuch. Die App erkennt die Wortpaare, du prüfst und korrigierst sie, und erst nach deiner Bestätigung werden sie eingefügt. In der iPhone-App läuft die Erkennung offline mit Apple Vision, in der Web-App auf dem Gerät mit Tesseract (dafür ist Internet nötig).
 - **Mehrere Wörter auf einmal einfügen**, eins pro Zeile, z. B. `av = Wasser`.
 - **Statistik**: Serie, Tagesziel, Diagramm der letzten 14 Tage, Liste der schweren und der sofort gewussten Wörter.
 - **Grammatik-Spickzettel**: Aussprache, Pronomen, Kopula, Verben, Imperativ, Ergativ, Futur, Verneinung, Ezafe.

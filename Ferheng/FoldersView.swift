@@ -6,6 +6,7 @@ enum FolderSheet: Identifiable {
     case newCard(folderID: UUID)
     case editCard(Card)
     case bulk(folderID: UUID?)
+    case photo(folderID: UUID?)
     case merge(parent: UUID?, preselected: Set<UUID>)
     case learn(LearnSetupRequest)
 
@@ -16,6 +17,7 @@ enum FolderSheet: Identifiable {
         case .newCard(let id): return "newCard-\(id)"
         case .editCard(let c): return "editCard-\(c.id)"
         case .bulk(let id): return "bulk-\(id?.uuidString ?? "none")"
+        case .photo(let id): return "photo-\(id?.uuidString ?? "none")"
         case .merge(let p, _): return "merge-\(p?.uuidString ?? "root")"
         case .learn(let r): return "learn-\(r.id)"
         }
@@ -36,6 +38,8 @@ extension View {
                 CardEditorView(card: card, isNew: false)
             case .bulk(let folderID):
                 BulkAddView(folderID: folderID)
+            case .photo(let folderID):
+                PhotoImportView(folderID: folderID)
             case .merge(let parent, let preselected):
                 MergeFoldersView(parentID: parent, preselected: preselected)
             case .learn(let request):
@@ -107,6 +111,10 @@ struct FoldersView: View {
                             Label("Ordner zusammenfügen", systemImage: "square.stack.3d.up")
                         }
                         .disabled(store.folders.count < 2)
+                        Button { sheet = .photo(folderID: nil) } label: {
+                            Label("Wörter fotografieren", systemImage: "camera.viewfinder")
+                        }
+                        .disabled(store.folders.isEmpty)
                         Button { sheet = .bulk(folderID: nil) } label: {
                             Label("Mehrere Wörter einfügen", systemImage: "text.badge.plus")
                         }
@@ -364,6 +372,9 @@ struct FolderDetailView: View {
                     Button { sheet = .newCard(folderID: folder.id) } label: {
                         Label("Wort hinzufügen", systemImage: "plus")
                     }
+                    Button { sheet = .photo(folderID: folder.id) } label: {
+                        Label("Wörter fotografieren", systemImage: "camera.viewfinder")
+                    }
                     Button { sheet = .bulk(folderID: folder.id) } label: {
                         Label("Mehrere Wörter einfügen", systemImage: "text.badge.plus")
                     }
@@ -419,6 +430,17 @@ struct FolderDetailView: View {
                 }
                 .buttonStyle(GradientButtonStyle())
                 .disabled(all.isEmpty)
+
+                Button {
+                    sheet = .photo(folderID: folder.id)
+                } label: {
+                    Image(systemName: "camera.viewfinder")
+                        .font(.headline)
+                        .frame(width: 54, height: 54)
+                        .background(Theme.brand.opacity(0.13), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Theme.brand)
 
                 Button {
                     sheet = .newCard(folderID: folder.id)
