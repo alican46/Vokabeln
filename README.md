@@ -34,11 +34,11 @@ SideStore ist eine App für das iPhone, mit der du Apps direkt auf dem Handy ins
 - Dieses GitHub-Repository muss **öffentlich** sein (siehe unten), damit SideStore die Updates herunterladen kann.
 
 ### Einmalige Einrichtung
-1. **iPhone:** Lade im App Store die App **LocalDevVPN** (früher „StosVPN“). SideStore braucht sie, um ohne PC zu installieren und zu erneuern.
-2. **PC (nur Windows):** Installiere **iTunes von der Apple-Webseite** (nicht aus dem Microsoft Store). Darüber erkennt der PC das iPhone.
-3. **PC:** Lade das Installationsprogramm **iloader** herunter. Der Link steht auf docs.sidestore.io unter „Installation“.
+1. **iPhone:** Lade im App Store die App [**LocalDevVPN**](https://apps.apple.com/app/localdevvpn/id6755608044). SideStore braucht sie, um ohne PC zu installieren und zu erneuern.
+2. **PC (nur Windows):** Installiere [**iTunes von der Apple-Webseite**](https://www.apple.com/itunes/download/win64). Darüber erkennt der PC das iPhone.
+3. **PC:** Lade das Installationsprogramm **iloader** herunter und installiere es. Windows: [iloader-windows-x64.msi](https://github.com/nab138/iloader/releases/latest/download/iloader-windows-x64.msi), Mac: [iloader-darwin-universal.dmg](https://github.com/nab138/iloader/releases/latest/download/iloader-darwin-universal.dmg).
 4. Schließe das iPhone per Kabel an, entsperre es und tippe auf **„Vertrauen“**.
-5. Starte iloader, melde dich mit deiner Apple-ID an und wähle **„Install SideStore“**. iloader installiert SideStore und richtet die nötige Kopplungsdatei („Pairing File“) ein.
+5. Starte iloader, melde dich mit deiner Apple-ID an und wähle dein iPhone und dann **„Install SideStore (Stable)“**. iloader installiert SideStore und richtet die nötige Kopplungsdatei („Pairing File“) ein.
 6. **iPhone:**
    - *Einstellungen → Datenschutz & Sicherheit → Entwicklermodus* einschalten. Das iPhone startet danach neu.
    - *Einstellungen → Allgemein → VPN & Geräteverwaltung* → deiner Apple-ID **vertrauen**.
