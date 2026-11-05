@@ -21,6 +21,27 @@ Native iPhone-App (Swift/SwiftUI, ab iOS 17) zum Lernen von Kurdisch (Kurmancî)
 - **Backup** als Datei, z. B. in iCloud Drive, und Wiederherstellen.
 - Dunkelmodus und Haptik-Feedback. Die App läuft komplett offline.
 
+## 🌐 Web-Version (ohne Kabel, ohne PC)
+
+Im Ordner `web/` liegt dieselbe App als Web-App. Sie wird über Safari auf dem Home-Bildschirm installiert und verhält sich dann wie eine normale App: eigenes Icon, Vollbild, funktioniert offline. Updates kommen automatisch, und es gibt **kein 7-Tage-Limit**.
+
+**Adresse:** https://alican46.github.io/Vokabeln/
+
+### Einmalig einrichten (auf GitHub, geht auch am Handy im Browser)
+1. Repo öffentlich machen: **Settings → General → Danger Zone → Change visibility → Make public**.
+2. **Settings → Pages → Build and deployment → Source: „GitHub Actions“** auswählen.
+3. **Actions → „Web-App veröffentlichen“ → Run workflow** tippen (oder einfach auf das nächste Update warten).
+
+### Auf dem iPhone installieren
+1. Die Adresse oben in **Safari** öffnen.
+2. Unten auf **Teilen** (Quadrat mit Pfeil) tippen → **„Zum Home-Bildschirm“** → **Hinzufügen**.
+3. Ab jetzt Ferheng über das Icon auf dem Home-Bildschirm starten.
+
+### Gut zu wissen
+- Deine Daten liegen nur auf deinem iPhone, im Speicher der Web-App. Mach ab und zu unter *Mehr → Backup erstellen* eine Sicherung.
+- Backups sind mit der iPhone-App (SideStore) **austauschbar**. Du kannst also jederzeit zwischen den Versionen wechseln.
+- Updates: Wenn eine neue Version veröffentlicht ist, lädt die App sie beim nächsten Öffnen automatisch, solange Internet da ist.
+
 ## Auf das iPhone bringen (kostenlos mit SideStore)
 
 SideStore ist eine App für das iPhone, mit der du Apps direkt auf dem Handy installierst und aktualisierst. Den PC brauchst du **nur einmal** für die Einrichtung.
@@ -81,6 +102,11 @@ Ohne SideStore geht es auch mit Xcode auf einem Mac (Projekt öffnen, iPhone ans
 ## Projektstruktur
 
 ```
+web/                      Web-Version (HTML/CSS/JS, läuft ohne Build-Schritt)
+  index.html, styles.css  Oberfläche
+  app.js                  Logik (gleicher Algorithmus & Datenformat wie iOS)
+  content.js              Startvokabeln & Grammatik
+  sw.js                   Offline-Unterstützung & automatische Updates
 Ferheng.xcodeproj         Xcode-Projekt (Xcode 16 oder neuer)
 Ferheng/
   FerhengApp.swift        App-Start, Tabs, Willkommensbildschirm

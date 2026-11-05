@@ -1,0 +1,42 @@
+name: Web-App veröffentlichen
+
+# Veröffentlicht die Web-Version (Ordner web/) auf GitHub Pages.
+# Einmalig nötig: Repo öffentlich + Settings → Pages → Source: "GitHub Actions".
+on:
+  push:
+    paths:
+      - 'web/**'
+      - 'VERSION'
+      - '.github/workflows/web.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version & Build-Nummer eintragen
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          echo "window.FERHENG_VERSION = '$VERSION (${{ github.run_number }})';" > web/version.js
+          sed -i "s/__BUILD__/${{ github.run_number }}-${GITHUB_SHA::7}/" web/sw.js
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deployment
+        uses: actions/deploy-pages@v4
