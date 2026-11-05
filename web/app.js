@@ -566,6 +566,7 @@ function viewFolderDetail(f) {
           <div class="small muted">${all.length} Wörter · ${dueCount(all)} fällig</div></div></div>
       ${all.length ? mbar(counts, true) + legend(counts) : ''}
       <div class="row" style="gap:10px"><button class="btn" data-act="learn-setup" data-id="${f.id}" ${all.length ? '' : 'disabled'}>▶︎ Lernen</button>
+        <button class="btn soft" style="width:56px;flex:none" data-act="photo" data-id="${f.id}" aria-label="Wörter fotografieren">📷</button>
         <button class="btn soft" style="width:56px;flex:none" data-act="new-card" data-id="${f.id}">＋</button></div>
     </div>
     ${subs.length ? `<div class="section-title">Unterordner</div><div class="list">${subs.map(folderRow).join('')}</div>` : ''}
@@ -786,6 +787,222 @@ function cardEditor(card, isNew) {
       $('#ce-ku').focus(); render();
     } else { closeSheet(); render(); }
   }
+}
+
+
+// ---------- Foto-Import (Texterkennung auf dem Gerät) ----------
+const TESSERACT_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+let ocrWorker = null;
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) return resolve();
+    const el = document.createElement('script'); el.src = src; el.onload = resolve; el.onerror = () => reject(new Error('Script konnte nicht geladen werden'));
+    document.head.appendChild(el);
+  });
+}
+async function getOcrWorker(onProgress) {
+  if (ocrWorker) return ocrWorker;
+  await loadScript(TESSERACT_URL);
+  // Kurmancî (kmr) + Deutsch (deu). Sprachdaten werden einmal geladen und dann im Browser gespeichert.
+  ocrWorker = await Tesseract.createWorker(['kmr', 'deu'], 1, { logger: (m) => ocrWorker && ocrWorker.__onProgress && ocrWorker.__onProgress(m) });
+  return ocrWorker;
+}
+function fileToCanvas(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 2200; const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
+      const ctx = c.getContext('2d');
+      ctx.filter = 'grayscale(1) contrast(1.25)';
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src);
+      resolve(c);
+    };
+    img.onerror = () => reject(new Error('Bild konnte nicht geöffnet werden'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+// Wörter mit Position → Zeilen → Wortpaare (links | rechts).
+const SEP_TOKEN = /^[-–—=:;|>→]+$/;
+function median(arr) { const a = arr.slice().sort((x, y) => x - y); return a.length ? a[Math.floor(a.length / 2)] : 0; }
+function parseOcrWords(words) {
+  const ws = words.map((w) => ({ text: trim(w.text), x0: w.x0, x1: w.x1, y0: w.y0, y1: w.y1, yc: (w.y0 + w.y1) / 2, xc: (w.x0 + w.x1) / 2 }))
+    .filter((w) => w.text && !/^[|_~•·*©®°^`´'"]+$/.test(w.text));
+  if (!ws.length) return [];
+  const h = median(ws.map((w) => w.y1 - w.y0)) || 10;
+  // 1) Wörter zu Zeilen gruppieren
+  ws.sort((a, b) => a.yc - b.yc);
+  let rows = [];
+  for (const w of ws) {
+    const row = rows.find((r) => Math.abs(r.yc - w.yc) < h * 0.7);
+    if (row) { row.words.push(w); row.yc = (row.yc * (row.words.length - 1) + w.yc) / row.words.length; }
+    else rows.push({ yc: w.yc, words: [w] });
+  }
+  rows.sort((a, b) => a.yc - b.yc);
+  rows.forEach((r) => { r.words.sort((a, b) => a.x0 - b.x0); r.h = Math.max(...r.words.map((w) => w.y1 - w.y0)); });
+  const rowH = median(rows.map((r) => r.h));
+  const HEADING_WORDS = /\b(lektion|kapitel|seite|übung|wortschatz|vokabeln?|ders|beş|rûpel|peyv|ferheng|unit|lesson)\b/i;
+
+  // 2) Gemeinsame Spaltengrenze der Seite finden (Mitte der großen Lücken)
+  const splits = [];
+  rows.forEach((r) => {
+    for (let i = 0; i < r.words.length - 1; i++) {
+      const g = r.words[i + 1].x0 - r.words[i].x1;
+      if (g > h * 1.6) splits.push((r.words[i].x1 + r.words[i + 1].x0) / 2);
+    }
+  });
+  const colX = splits.length >= 2 && splits.length >= rows.length * 0.25 ? median(splits) : null;
+
+  // 3) Jede Zeile in links/rechts aufteilen
+  let pairs = rows.map((r) => {
+    const wsr = r.words;
+    const joined = wsr.map((w) => w.text).join(' ');
+    const bigOrTitle = r.h > rowH * 1.6 || HEADING_WORDS.test(joined);
+    const sepIdx = wsr.findIndex((w, i) => i > 0 && i < wsr.length - 1 && SEP_TOKEN.test(w.text));
+    let left; let right;
+    if (sepIdx > 0) { left = wsr.slice(0, sepIdx); right = wsr.slice(sepIdx + 1); }
+    else if (/[=;]|\s[-–—]\s/.test(joined) && splitLine(joined)) {
+      const [a, b] = splitLine(joined); return markHeading(cleanPair(a, b), r.yc, bigOrTitle);
+    } else if (colX != null) { left = wsr.filter((w) => w.xc < colX); right = wsr.filter((w) => w.xc >= colX); }
+    else {
+      let best = -1; let gap = -Infinity;
+      for (let i = 0; i < wsr.length - 1; i++) { const g = wsr[i + 1].x0 - wsr[i].x1; if (g > gap) { gap = g; best = i; } }
+      if (best >= 0 && gap > h * 1.6) { left = wsr.slice(0, best + 1); right = wsr.slice(best + 1); } else { left = wsr; right = []; }
+    }
+    return markHeading(cleanPair(left.map((w) => w.text).join(' '), right.map((w) => w.text).join(' ')), r.yc, bigOrTitle);
+  });
+
+  // 4) Halbe Zeilen zusammenführen (z. B. bei schief fotografierten Seiten)
+  for (let i = 0; i < pairs.length - 1; i++) {
+    const a = pairs[i]; const b = pairs[i + 1];
+    if (Math.abs(b.yc - a.yc) > h * 1.4) continue;
+    if (a.ku && !a.de && b.de && !b.ku) { a.de = b.de; b.ku = ''; b.de = ''; }
+    else if (a.de && !a.ku && b.ku && !b.de) { a.ku = b.ku; b.ku = ''; b.de = ''; }
+  }
+  return pairs.filter((p) => p.ku || p.de).map((p) => ({ ku: p.ku, de: p.de, on: !!(p.ku && p.de) && !p.heading }));
+}
+// Überschriften (große Schrift, „Lektion 3“, Seitenzahlen …) werden vorgeschlagen, aber nicht vorausgewählt.
+const markHeading = (p, yc, bigOrTitle) => Object.assign(p, { yc, heading: bigOrTitle || /\d/.test(p.ku + p.de) });
+function cleanPair(a, b) {
+  const strip = (s) => trim(String(s).replace(/^\s*(\d+[.)]|[a-z][.)]|[-–—•·*])\s+/i, '').replace(/^[-–—=:;|]+|[-–—=:;|,]+$/g, ''));
+  const ku = strip(a); const de = strip(b);
+  return { ku, de, on: !!(ku && de) };
+}
+// Erkennt, ob die Spalten vertauscht sind (Deutsch links, Kurdisch rechts).
+function looksSwapped(pairs) {
+  const ku = (s) => (s.match(/[êîûçşÊÎÛÇŞ]/g) || []).length;
+  const de = (s) => (s.match(/[äöüßÄÖÜ]|sch|ch(?!a)|ei|ie|tz/g) || []).length + (/^(der|die|das|ein|eine|sich)\s/i.test(s) ? 2 : 0);
+  let left = 0; let right = 0;
+  pairs.forEach((p) => { left += ku(p.ku) - de(p.ku); right += ku(p.de) - de(p.de); });
+  return right > left;
+}
+
+function photoSheet(folderID) {
+  if (!db.folders.length) { toast('Erstelle zuerst einen Ordner'); return; }
+  openSheet({
+    title: 'Wörter fotografieren',
+    body: `<div class="stack" style="align-items:center;text-align:center;gap:16px;padding:10px 4px">
+        <div class="sun-badge" style="width:96px;height:96px;font-size:48px;background:linear-gradient(135deg,var(--brand),var(--brand-2));box-shadow:0 10px 30px rgba(13,140,128,.35)">📷</div>
+        <div class="muted">Fotografiere eine Vokabelliste – z. B. aus deinem Lernbuch. Am besten gerade von oben, gut beleuchtet, eine Spalte Kurdisch und eine Spalte Deutsch.</div>
+        <label class="btn" for="photo-input" id="photo-pick">📸 Foto aufnehmen oder auswählen</label>
+        <input type="file" id="photo-input" accept="image/*" hidden>
+        <div id="photo-status" class="stack" style="width:100%;gap:8px;display:none">
+          <img id="photo-preview" style="width:100%;max-height:240px;object-fit:contain;border-radius:14px;background:var(--card)">
+          <div class="small semi" id="photo-msg">Text wird erkannt …</div>
+          <div class="progress"><span id="photo-bar" style="width:3%"></span></div>
+        </div>
+        <div class="footnote">Die Erkennung läuft direkt auf deinem Handy – das Foto wird nirgendwo hochgeladen. Dafür wird eine Internetverbindung gebraucht; beim ersten Mal werden ca. 5 MB Sprachdaten geladen.</div>
+      </div>`,
+    onMount: () => {
+      $('#photo-input').onchange = async (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        $('#photo-pick').style.display = 'none';
+        $('#photo-status').style.display = '';
+        $('#photo-preview').src = URL.createObjectURL(file);
+        const setP = (msg, p) => { if ($('#photo-msg')) { $('#photo-msg').textContent = msg; $('#photo-bar').style.width = `${Math.max(3, p * 100)}%`; } };
+        try {
+          setP('Texterkennung wird vorbereitet …', 0.05);
+          const worker = await getOcrWorker();
+          worker.__onProgress = (m) => {
+            if (m.status === 'recognizing text') setP(`Text wird erkannt … ${Math.round(m.progress * 100)} %`, 0.3 + m.progress * 0.7);
+            else if (/load/.test(m.status)) setP('Sprachdaten werden geladen …', 0.05 + (m.progress || 0) * 0.25);
+          };
+          const canvas = await fileToCanvas(file);
+          const { data } = await worker.recognize(canvas);
+          const words = (data.words || []).filter((w) => w.confidence > 20).map((w) => ({ text: w.text, ...w.bbox }));
+          let pairs = parseOcrWords(words);
+          if (looksSwapped(pairs)) pairs = pairs.map((p) => ({ ku: p.de, de: p.ku, on: p.on }));
+          if (!pairs.length) { setP('Keine Wörter erkannt. Versuch es mit einem schärferen, geraden Foto.', 1); $('#photo-pick').style.display = ''; return; }
+          reviewSheet(pairs, folderID);
+        } catch (err) {
+          console.error(err);
+          setP(navigator.onLine ? 'Die Texterkennung ist fehlgeschlagen. Bitte versuch es nochmal.' : 'Für die Texterkennung wird eine Internetverbindung benötigt.', 1);
+          $('#photo-pick').style.display = '';
+        }
+        e.target.value = '';
+      };
+    }
+  });
+}
+
+function reviewSheet(pairs, folderID) {
+  const rows = pairs.map((p) => Object.assign({}, p));
+  const count = () => rows.filter((r) => r.on && trim(r.ku) && trim(r.de)).length;
+  openSheet({
+    title: 'Erkannte Wörter', primary: 'Einfügen',
+    body: `<div class="footnote" style="margin:0 4px 10px">Prüfe die Wörter, korrigiere Fehler und wähle aus, was übernommen werden soll. Erst mit „Einfügen“ wird gespeichert.</div>
+      <div class="row" style="gap:8px;margin-bottom:10px">
+        <button class="btn soft" id="rv-swap" style="padding:11px">⇄ Spalten tauschen</button>
+        <button class="btn gray" id="rv-all" style="padding:11px">Alle an/aus</button>
+      </div>
+      <div class="row tiny semi muted" style="padding:0 12px 6px 46px"><span class="grow">Kurdisch</span><span class="grow">Deutsch</span></div>
+      <div class="list" id="rv-list"></div>
+      <button class="link small" id="rv-add" style="margin:10px 6px">＋ Zeile hinzufügen</button>
+      <div id="rv-charbar">${charbar('focused')}</div>
+      <div class="field" style="margin-top:14px"><label>In Ordner</label><select id="rv-folder">${folderOptions(folderID || flatFolders()[0].folder.id)}</select></div>
+      <div class="field"><label>Wortart</label><select id="rv-type">${Object.entries(WORD_TYPES).map(([k, v]) => `<option value="${k}" ${k === 'other' ? 'selected' : ''}>${v}</option>`).join('')}</select></div>`,
+    onMount: (el) => {
+      let lastKu = null;
+      $('#rv-charbar .charbar').__getInput = () => lastKu;
+      const draw = () => {
+        $('#rv-list').innerHTML = rows.map((r, i) => `<div class="list-item" style="gap:8px;padding:8px 10px">
+            <button class="radio ${r.on ? 'on' : ''}" data-rv-toggle="${i}" aria-label="Übernehmen"></button>
+            <input class="ku" data-rv="${i}" data-f="ku" value="${esc(r.ku)}" autocapitalize="off" autocorrect="off" spellcheck="false" style="padding:9px 10px;font-size:16px">
+            <input data-rv="${i}" data-f="de" value="${esc(r.de)}" autocorrect="off" style="padding:9px 10px;font-size:16px">
+          </div>`).join('') || '<div class="list-item muted">Keine Zeilen</div>';
+        $('#sheet-primary').textContent = `${count()} einfügen`;
+        $('#sheet-primary').disabled = !count();
+      };
+      el.addEventListener('input', (e) => {
+        const i = e.target.dataset.rv; if (i == null) return;
+        rows[+i][e.target.dataset.f] = e.target.value;
+        if (trim(rows[+i].ku) && trim(rows[+i].de)) rows[+i].on = true;
+        $(`[data-rv-toggle="${i}"]`).classList.toggle('on', rows[+i].on);
+        $('#sheet-primary').textContent = `${count()} einfügen`; $('#sheet-primary').disabled = !count();
+      });
+      el.addEventListener('focusin', (e) => { if (e.target.dataset?.f === 'ku') lastKu = e.target; });
+      el.addEventListener('click', (e) => {
+        const t = e.target.closest('[data-rv-toggle]'); if (!t) return;
+        const r = rows[+t.dataset.rvToggle]; r.on = !r.on; t.classList.toggle('on', r.on);
+        $('#sheet-primary').textContent = `${count()} einfügen`; $('#sheet-primary').disabled = !count();
+      });
+      $('#rv-swap').onclick = () => { rows.forEach((r) => { [r.ku, r.de] = [r.de, r.ku]; }); draw(); };
+      $('#rv-all').onclick = () => { const all = rows.every((r) => r.on); rows.forEach((r) => { r.on = !all; }); draw(); };
+      $('#rv-add').onclick = () => { rows.push({ ku: '', de: '', on: false }); draw(); $(`[data-rv="${rows.length - 1}"]`).focus(); };
+      draw();
+    },
+    onPrimary: () => {
+      const fid = $('#rv-folder').value; const type = $('#rv-type').value; let n = 0;
+      rows.filter((r) => r.on && trim(r.ku) && trim(r.de)).forEach((r) => {
+        const c = newCard(fid); c.kurdish = trim(r.ku); c.german = trim(r.de); c.type = type; db.cards.push(c); n++;
+      });
+      save(); closeSheet(); toast(`✓ ${plural(n, 'Wort', 'Wörter')} eingefügt`);
+      ui.tab = 'folders'; ui.folder = fid; render();
+    }
+  });
 }
 
 function bulkSheet(folderID) {
@@ -1081,16 +1298,19 @@ document.addEventListener('click', (e) => {
     case 'back': { const f = folderById(ui.folder); ui.folder = f?.parentID || null; render(); break; }
     case 'new-folder': folderEditor(null, null); break;
     case 'new-card': cardEditor(newCard(id), true); break;
+    case 'photo': photoSheet(id); break;
     case 'edit-card': { const c = cardById(id); if (c) cardEditor(c, false); break; }
     case 'folders-menu': menuSheet('Hinzufügen', [
       { icon: '📁', label: 'Neuer Ordner', run: () => folderEditor(null, null) },
       { icon: '🗂️', label: 'Ordner zusammenfügen', disabled: db.folders.length < 2, run: () => mergeSheet(null) },
+      { icon: '📷', label: 'Wörter fotografieren', disabled: !db.folders.length, run: () => photoSheet(null) },
       { icon: '📝', label: 'Mehrere Wörter einfügen', disabled: !db.folders.length, run: () => bulkSheet(null) }
     ]); break;
     case 'folder-menu': {
       const f = folderById(id);
       menuSheet(f.name, [
         { icon: '➕', label: 'Wort hinzufügen', run: () => cardEditor(newCard(f.id), true) },
+        { icon: '📷', label: 'Wörter fotografieren', run: () => photoSheet(f.id) },
         { icon: '📝', label: 'Mehrere Wörter einfügen', run: () => bulkSheet(f.id) },
         { icon: '📁', label: 'Unterordner erstellen', run: () => folderEditor(null, f.id) },
         { icon: '✏️', label: 'Ordner bearbeiten', run: () => folderEditor(f, f.parentID) },
