@@ -54,7 +54,7 @@ struct LearnSetupView: View {
                                         .font(.subheadline.weight(.semibold))
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 14)
-                                        .foregroundStyle(quizKind == k ? .white : .primary)
+                                        .foregroundStyle(quizKind == k ? Color.white : Color.primary)
                                         .background(
                                             RoundedRectangle(cornerRadius: 14, style: .continuous)
                                                 .fill(quizKind == k ? AnyShapeStyle(Theme.brandGradient) : AnyShapeStyle(Color(.secondarySystemGroupedBackground)))

@@ -240,7 +240,7 @@ struct CardRow: View {
                     if card.gender != .none {
                         Text(card.gender.short)
                             .font(.caption2.weight(.bold))
-                            .foregroundStyle(card.gender == .f ? .pink : .blue)
+                            .foregroundStyle(card.gender == .f ? Color.pink : Color.blue)
                     }
                 }
                 Text(card.german)

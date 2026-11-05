@@ -433,7 +433,7 @@ final class AppStore {
         }
         var out: [StudyItem] = []
         while out.count < count && !pool.isEmpty {
-            let total = pool.reduce(0) { $0 + $1.1 }
+            let total = pool.reduce(0.0) { $0 + $1.1 }
             var r = Double.random(in: 0..<total)
             var index = pool.count - 1
             for (i, entry) in pool.enumerated() {
