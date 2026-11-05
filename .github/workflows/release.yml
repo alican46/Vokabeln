@@ -2,10 +2,8 @@ name: Release (SideStore-Update)
 
 # Ein neues Release entsteht, wenn sich die Datei VERSION ändert
 # (oder manuell über "Run workflow").
+# Nur manuell starten (Actions → Run workflow) – Fokus liegt auf der Web-Version.
 on:
-  push:
-    paths:
-      - VERSION
   workflow_dispatch:
 
 permissions:
